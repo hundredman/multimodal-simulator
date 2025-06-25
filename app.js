@@ -101,11 +101,24 @@ async function observeGesture() {
 }
 
 async function gptFeedback(question, answer) {
-  const res = await fetch("/.netlify/functions/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, answer }),
-  });
+  try {
+    const res = await fetch("/.netlify/functions/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, answer }),
+    });
 
-  return await res.json();
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error("API error response:", errorText);
+      return { feedback: "GPT API 오류", score: 0 };
+    }
+
+    const data = await res.json();
+    console.log("GPT response:", data);
+    return data;
+  } catch (err) {
+    console.error("gptFeedback error:", err);
+    return { feedback: "GPT 호출 실패", score: 0 };
+  }
 }
