@@ -25,16 +25,13 @@ const modeSelector = document.getElementById("modeSelector");
 
 modeSelector.addEventListener("change", (e) => {
   mode = e.target.value;
-  if (mode === 'emotion') {
-    prompt.innerText = 'Say: “I’m happy today.” with a smile 😊';
-  } else if (mode === 'gesture') {
-    prompt.innerText = 'Say: “I’m happy today.” and then nod within 3 seconds 🤸';
-  }
+  updatePromptText();
 });
 
 startBtn.addEventListener("click", () => {
   startBtn.style.display = "none";
-  prompt.innerText = "🎤 Please speak now...";
+  modeSelector.style.display = "none";
+  updatePromptText();
   feedbackDiv.innerText = "";
   recognition.start();
 });
@@ -75,6 +72,11 @@ function provideFeedback(msg) {
 
 function resetUI() {
   startBtn.style.display = "inline-block";
+  modeSelector.style.display = "inline-block";
+  updatePromptText();
+}
+
+function updatePromptText() {
   if (mode === 'emotion') {
     prompt.innerText = 'Say: “I’m happy today.” with a smile 😊';
   } else if (mode === 'gesture') {
