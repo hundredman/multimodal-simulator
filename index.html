@@ -1,22 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Multimodal Simulator</title>
+  <title>AI 면접 시뮬레이터</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
-    <h1>Speak & Express</h1>
+    <h1>AI 면접 시뮬레이터</h1>
+
     <video id="video" width="320" height="240" autoplay muted></video>
-    <p id="prompt">Say: “I’m happy today.” with a smile 😊</p>
+
+    <p id="questionBox">💬 면접 질문이 여기에 표시됩니다.</p>
+    <p id="prompt">Start 버튼을 누르면 면접 질문이 제시됩니다.</p>
 
     <div class="controls">
       <button id="startBtn">Start</button>
-      <select id="modeSelector">
-        <option value="emotion">😊 감정 인식 모드</option>
-        <option value="gesture">🤸 행동 인식 모드</option>
-      </select>
     </div>
 
     <div id="feedback"></div>

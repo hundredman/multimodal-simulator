@@ -1,5 +1,10 @@
-// mode: 'emotion' (기존 감정 인식) | 'gesture' (행동 인식)
-let mode = 'emotion';
+// 면접 시뮬레이터: 음성 + 표정 + 행동 피드백 제공
+const questions = [
+  "자기소개를 해주세요.",
+  "최근에 도전한 경험에 대해 말해주세요.",
+  "갈등을 해결한 경험이 있나요?",
+  "지원한 이유는 무엇인가요?"
+];
 
 // face-api.js 로드
 Promise.all([
@@ -15,98 +20,82 @@ function startVideo() {
 
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
-recognition.lang = 'en-US';
+recognition.lang = 'ko-KR';
 recognition.interimResults = false;
 
 const startBtn = document.getElementById("startBtn");
 const prompt = document.getElementById("prompt");
 const feedbackDiv = document.getElementById("feedback");
-const modeSelector = document.getElementById("modeSelector");
-
-modeSelector.addEventListener("change", (e) => {
-  mode = e.target.value;
-  updatePromptText();
-});
+const questionBox = document.getElementById("questionBox");
 
 startBtn.addEventListener("click", () => {
   startBtn.style.display = "none";
-  modeSelector.style.display = "none";
-  updatePromptText();
   feedbackDiv.innerText = "";
+  const q = pickQuestion();
+  questionBox.innerText = `면접 질문: ${q}`;
+  prompt.innerText = "답변을 시작해주세요...";
   recognition.start();
 });
 
 recognition.onresult = async (e) => {
   const text = e.results[0][0].transcript;
-  prompt.innerText = "⌛ Analyzing...";
+  prompt.innerText = "답변 분석 중...";
 
-  if (mode === 'emotion') {
-    const expr = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
-    const happyScore = expr?.expressions.happy || 0;
+  const expr = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+  const happyScore = expr?.expressions.happy || 0;
 
-    if (/i[’']?m happy/.test(text.toLowerCase()) && happyScore > 0.7) {
-      provideFeedback(`Great! You said: "${text}" with a nice smile! 😊`);
-    } else {
-      provideFeedback("Try again: smile & say the sentence clearly.");
-    }
-    resetUI();
+  const nodded = await observeGesture();
+
+  let feedback = `당신의 답변: "${text}"\n`;
+  if (text.length < 10) feedback += "답변이 너무 짧습니다. 조금 더 구체적으로 이야기해보세요.\n";
+  else feedback += "구체적인 답변 감사합니다.\n";
+
+  if (/열정|책임감|도전|성장|협업/.test(text)) {
+    feedback += "지원자의 태도와 강점이 잘 드러났습니다.\n";
+  } else {
+    feedback += "조금 더 자신만의 경험과 강점을 녹여보세요.\n";
   }
-  else if (mode === 'gesture') {
-    prompt.innerText = "🧍 Now nod your head within 3 seconds...";
-    observeGesture().then(nodded => {
-      if (nodded) {
-        provideFeedback("Great gesture! You nodded 👍");
-      } else {
-        provideFeedback("Try again: Please nod clearly next time.");
-      }
-      resetUI();
-    });
-  }
+
+  if (happyScore > 0.6) feedback += "표정이 긍정적으로 보입니다.\n";
+  else feedback += "좀 더 밝은 표정을 시도해보세요.\n";
+
+  feedback += nodded ? "고개를 잘 끄덕였습니다." : "고개 끄덕임이 부족했어요.";
+
+  provideFeedback(feedback);
+  resetUI();
 };
+
+function pickQuestion() {
+  return questions[Math.floor(Math.random() * questions.length)];
+}
 
 function provideFeedback(msg) {
   feedbackDiv.innerText = msg;
   const utter = new SpeechSynthesisUtterance(msg);
+  utter.lang = 'ko-KR';
   speechSynthesis.speak(utter);
 }
 
 function resetUI() {
   startBtn.style.display = "inline-block";
-  modeSelector.style.display = "inline-block";
-  updatePromptText();
+  prompt.innerText = "Start 버튼을 눌러 다음 질문을 받아보세요.";
 }
 
-function updatePromptText() {
-  if (mode === 'emotion') {
-    prompt.innerText = 'Say: “I’m happy today.” with a smile 😊';
-  } else if (mode === 'gesture') {
-    prompt.innerText = 'Say: “I’m happy today.” and then nod within 3 seconds 🤸';
-  }
-}
-
-// 행동 인식: 끄덕임 감지용 MediaPipe
+// 끄덕임 감지
 let yHistory = [];
-let detecting = false;
-
 async function observeGesture() {
   return new Promise((resolve) => {
     yHistory = [];
-    detecting = true;
-
     const start = performance.now();
-    const checkDuration = 3000; // 3초 동안 감지
+    const duration = 3000;
 
     const interval = setInterval(async () => {
-      const results = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-      if (results?.box) {
-        yHistory.push(results.box.top);
-      }
-
-      if (performance.now() - start > checkDuration) {
+      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+      if (result?.box) yHistory.push(result.box.top);
+      if (performance.now() - start > duration) {
         clearInterval(interval);
-        detecting = false;
         const delta = Math.max(...yHistory) - Math.min(...yHistory);
-        resolve(delta > 20); // Y축 이동이 20px 이상이면 끄덕임
+        resolve(delta > 20);
       }
     }, 150);
   });
